@@ -75,6 +75,7 @@ io.on('office', function (data) {
 				var raster = new paper.Raster(image);
 				//raster.position = paper.view.center;
 				raster.position = new paper.Point(raster.width/2, raster.height/2);
+				raster.fitBounds(paper.view.bounds);
 				// Workaround for the raster not ready with the image for the redraw
 				setTimeout(function(){paper.view.draw();}, 100);
 			break;
