@@ -1,0 +1,39 @@
+extends layout
+
+block header_scripts
+  script(src="/javascripts/paper.js")
+  script(src="/javascripts/office.js")
+
+block content
+  h1 Welcome to my office
+  div(id="drawing", class="round main_panel")
+    canvas(id="draw", class="main_object", width="600", height="480")
+      script(type="text/paperscript", src="javascripts/draw.js", canvas="draw")
+    div(id="toolbar")
+      button(id="drawing_toggle_pencil", class="selected", onclick="drawingTool(jQuery(this))" )="Pencil"
+      button(id="drawing_toggle_line", onclick="drawingTool(jQuery(this))" )="Line"
+      button(id="drawing_toggle_circle", onclick="drawingTool(jQuery(this))" )="Circle"
+      button(id="drawing_clear_canvas", onclick="clearCanvas(true)" )="Clear"
+      button(id="drawing_save_canvas", onclick="window.open(jQuery('canvas#draw').get(0).toDataURL(),'_blank')" )="Save"
+      input(id="drawing_load_canvas", type="file", onchange="loadImage(this)" )="Load"
+  div(id="chatting", class="round main_panel")
+    div(id="div_text_history", style="overflow-y:scroll", class="main_object")
+      p(id="text_history", style="width:350px; height:400px", readonly="readonly")="Here is going to be the text"
+        br
+    input(type="text", id="chat_text_input")
+    button(id="chat_send_text", onclick="sendData(jQuery('input#chat_text_input'))")="Send"
+    input(type="text", id="kick_text_input")
+    button(id="kick_send_text", onclick="kickUser(jQuery('input#kick_text_input'))")="Kick"
+  div(style="clear:both")
+  div(id="register", class="main_panel")
+    p()="Sorry, this is a private office and you must have an apointment."
+    p()="Please indentify yourself before entering."
+    br
+    label(id="register_label_username")="Username"
+    input(type="text", id="register_username")
+    br
+    label(id="register_label_password")="Password"
+    input(type="password", id="register_password")
+    br
+    button(id="test", onclick="tryRegister(document.getElementById('register_username'),document.getElementById('register_password'))")="Register"
+//-    button(id="ping", onclick="tryPing()")="Ping"

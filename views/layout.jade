@@ -1,0 +1,13 @@
+doctype 5
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    script(src="/javascripts/jquery-1.9.1.min.js")
+    script(src="/javascripts/jquery.corner.js")
+    script(src="/socket.io/socket.io.js")
+    block header_scripts
+  body
+    block content
+    div(style="clear:both")
+      p This was created by Joy Dragon 2013
