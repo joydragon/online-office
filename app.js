@@ -3,6 +3,9 @@
  * http://www.12devsofxmas.co.uk/post/2012-12-28-day-3-realtime-collaborative-drawing-with-nodejs
  * http://blog.marcon.me/post/31143865164/send-images-through-websockets
  * http://stackoverflow.com/questions/12107346/understanding-input-type-file
+ * 
+ * This guy made a lot of the same, but I didn't look at his code until I was already done with that
+ * http://psitsmike.com/2011/10/node-js-and-socket-io-multiroom-chat-tutorial/
  */
 
 /**
@@ -53,21 +56,33 @@ var clients = Array();
 var usernames = Array();
 
 // This is the office the client will go
-var main_office = "office";
+var main_office = {
+	id: '0',
+	name: "office",
+};
+var office_hall = Array();
 
 // A user connects to the server (opens a socket)
 io.sockets.on('connection', function (socket) {
 
+	// Will it work?
+	io.sockets.emit('office', {
+		type: "Room_List",
+		list: office_hall,
+		phase: "update_list"
+	});
+
+
 	// from the browser on this socket
 	socket.on('chat', function ( data ) {
 		var office = getCurrentSocketOffice(socket);
-		if(io.sockets.clients(office).indexOf(socket) != -1)
+		if(io.sockets.clients(office.name).indexOf(socket) != -1)
 		{
 			if(data.message != "")
 			{
 				data.type = "Chat";
 				data.user = clients[socket.id].username;
-				io.sockets.in(office).emit( 'office', data );   
+				io.sockets.in(office.name).emit( 'office', data );   
 			}
 		}
 		else
@@ -79,14 +94,14 @@ io.sockets.on('connection', function (socket) {
 	// from the browser on this socket
 	socket.on('draw', function ( data ) {
 		var office = getCurrentSocketOffice(socket);
-		if(io.sockets.clients(office).indexOf(socket) != -1)
+		if(io.sockets.clients(office.name).indexOf(socket) != -1)
 		{
 			if(data.phase!= "")
 			{
 				data.type = "Draw";
 				data.user = clients[socket.id].username;
 				//io.sockets.in(office).emit( 'office', data );   
-				socket.broadcast.to(office).emit( 'office', data);
+				socket.broadcast.to(office.name).emit( 'office', data);
 			}
 		}
 		else
@@ -98,7 +113,7 @@ io.sockets.on('connection', function (socket) {
 	// from the browser on this socket
 	socket.on('image', function ( data ) {
 		var office = getCurrentSocketOffice(socket);
-		if(io.sockets.clients(office).indexOf(socket) != -1)
+		if(io.sockets.clients(office.name).indexOf(socket) != -1)
 		{
 			if(data.phase!= "")
 			{
@@ -116,17 +131,20 @@ io.sockets.on('connection', function (socket) {
 
 	socket.on('register', function ( data ) {
 		var office = register_user(data);
+
 		if(office && data.user != "")
 		{
+			socket.set('my_room', office, function(){ socket.get('my_room', function(err, data){console.log("I have logged a new room: "); console.log(data); }) });
+			socket.set('my_name', data.user, function(){ socket.get('my_name', function(err, data){console.log("I have logged a new user: "); console.log(data); }) });
 			clients[socket.id] = {username: data.user, office: office};
 			usernames[data.user] = {socket: socket.id};
-			socket.join(office);
+			socket.join(office.name);
 			socket.emit("office", {
 				type: "General",
 				message: "User "+data.user+" Registered",
 				phase: "register_ok",
 			});
-			io.sockets.in(office).emit("office", {
+			io.sockets.in(office.name).emit("office", {
 				type: "General",
 				message: "User "+data.user+" Registered",
 				phase: "announcement",
@@ -144,18 +162,18 @@ io.sockets.on('connection', function (socket) {
 	socket.on('kick', function(data){
 		if(data.user != undefined && data.user != "" && true) // Last true is for the canHeKickHim? query
 		{
-			var office = getCurrentOfficeFromUsername(data.user);
 			var socket_id = usernames[data.user].socket;
-			console.log("Trying to kick "+data.user+" with socket id: "+socket_id+" and in office: "+office);
-			for (var i=0; i < io.sockets.clients(office).length;i++)
+			var office = getCurrentSocketOffice(socket_id);
+			console.log("Trying to kick "+data.user+" with socket id: "+socket_id+" and in office: "+office.name);
+			for (var i=0; i < io.sockets.clients(office.name).length;i++)
 			{
-				var temp_socket = io.sockets.clients(office)[i];
+				var temp_socket = io.sockets.clients(office.name)[i];
 				if(temp_socket.id == socket_id)
 				{
 					console.log("Found the socket! Now kicking it");
 					temp_socket.emit('error', { error: "You have been kicked" });
-					temp_socket.leave(office);
-					io.sockets.in(office).emit('office',{
+					temp_socket.leave(office.name);
+					io.sockets.in(office.name).emit('office',{
 						type: "General",
 						message: "User "+data.user+" has been kicked",
 						phase: "announcement",
@@ -175,45 +193,80 @@ io.sockets.on('connection', function (socket) {
 			}
 			usernames[clients[socket.id].username] = undefined;
 			clients[socket.id] = undefined;
-			socket.broadcast.to(office).emit( 'office', data);
+			socket.broadcast.to(office.name).emit( 'office', data);
+		}
+		for(var i=0; i < office_hall.length; i++)
+		{
+			socket.leave(office_hall.name);
 		}
 	})
 });
 
 function register_user(data)
 {
+	var auth = false;
 	if(data.user == "joydragon" && data.pass == "mypass")
 	{
-		return main_office;
+		auth = true;
 	}
 	else if(data.user == "test" && data.pass == "123")
 	{
-		return main_office;
+		auth = true;
 	}
 	else if(data.pass == "room1")
 	{
+		auth = true;
 		return main_office;
+	}
+	if(auth)
+	{
+		if(data.office_num == "create")
+		{
+			return createOffice(data);
+			console.log("What to do?");
+		}
+		else
+		{
+			if(!isNaN(parseInt(data.office_num)) && data.office_num <= office_hall.length)
+			{
+				return office_hall[data.office_num - 1];
+			}
+		}
 	}
 	return false;
 }
 
+function createOffice(owner)
+{
+	
+	var office = 
+	{
+		'id' : (office_hall.length + 1),
+		'name' : owner.user + "'s Office",
+		'owner' : owner,
+		'attendeees' : Array(owner),
+	};
+	office_hall.push(office);
+	io.sockets.emit('office', {
+		type: "Room_List",
+		list: office_hall,
+		phase: "update_list"
+		});
+	console.log("Created office");
+	console.log(office);
+	return office;
+}
+
 function isOwner(username, office)
 {
-	if(office == main_office && username == "joydragon")
+	if(office.name == username)
 		return true;
+	return false;
 }
 
 function getCurrentSocketOffice(socket)
 {
-	var my_rooms_list = io.sockets.manager.roomClients[socket.id];
-
-	
-
-	return main_office;
+	//var my_rooms_list = io.sockets.manager.roomClients[socket.id];
+	return clients[socket.id].office;
 }
 
-function getCurrentOfficeFromUsername(username)
-{
-	
-	return main_office;
-}
