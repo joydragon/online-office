@@ -35,5 +35,7 @@ block content
     label(id="register_label_password")="Password"
     input(type="password", id="register_password")
     br
-    button(id="test", onclick="tryRegister(document.getElementById('register_username'),document.getElementById('register_password'))")="Register"
-//-    button(id="ping", onclick="tryPing()")="Ping"
+    button(id="register_submit", onclick="tryRegister()")="Register"
+  div(id="room_list", class="main_panel")
+    select(id="select_room", name="select_room")
+      option(value="create")="Create"
