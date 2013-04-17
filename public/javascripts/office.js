@@ -13,21 +13,29 @@ io.on('office', function (data) {
 	case "General":
 		if(data.phase == "register_ok")
 		{
-			jQuery("div#register").hide();
-			jQuery("div#drawing").show();
-			jQuery("div#chatting").show();
+			showMainPage();
 		}
 		else if(data.phase == "register_nok")
 		{
 			alert(data.message);
-			jQuery("div#register").show();
-			jQuery("div#drawing").hide();
-			jQuery("div#chatting").hide();
-
+			showStartPage();
 		}
 		else if(data.phase == "announcement")
 		{
 			writeGeneralMessages("<em>"+data.message+"</em>");
+		}
+		break;
+	case "Room_List":
+		if(data.phase == "update_list")
+		{
+			jQuery("#select_room").children().not("[value=create]").remove();
+			for(var i = 0; i < data.list.length; i++)
+			{
+				var temp_room = data.list[i];
+				var option = document.createElement("option");
+				jQuery(option).val(temp_room.id).text(temp_room.name);
+				jQuery("#select_room").append(option);
+			}
 		}
 		break;
 	case "Chat":
@@ -89,9 +97,7 @@ io.on('office', function (data) {
 
 io.on('error', function (error)
 {
-	jQuery("div#register").show();
-	jQuery("div#drawing").hide();
-	jQuery("div#chatting").hide();
+	showStartPage();
 	jQuery("button#drawing_clear_canvas").addClass("clicked");
 	jQuery("p#text_history").html("");
 	clearCanvas();
@@ -100,24 +106,52 @@ io.on('error', function (error)
 });
 
 jQuery(document).ready(function(){
-	jQuery("div#register").show().corner();
-	jQuery("div#drawing").corner();
-	jQuery("div#chatting").corner();
+	jQuery(".main_panel").corner();
+	showStartPage();
+
+	jQuery("input#register_username").keypress(function(){
+		if(event.which == 13)
+		{
+			jQuery("button#register_submit").click();
+		}
+	});
+	jQuery("input#register_password").keypress(function(){
+		if(event.which == 13)
+		{
+			jQuery("button#register_submit").click();
+		}
+	});
 	jQuery("input#chat_text_input").keypress(function(){
 		if(event.which == 13)
 		{
 			jQuery("button#chat_send_text").click();
 		}
 	});
+	jQuery("input#kick_text_input").keypress(function(){
+		if(event.which == 13)
+		{
+			jQuery("button#kick_send_text").click();
+		}
+	});
 });
 
 // Actions
-function tryRegister(username_input, password_input)
+function tryRegister()
 {
-	if(username_input && password_input)
+	var username_input = jQuery("input#register_username");
+	var password_input = jQuery("input#register_password");
+	var office = jQuery("select#select_room");
+	if(username_input && password_input && office)
 	{
-		io.emit("register", {user: username_input.value, pass: password_input.value});
+		var data = {
+			user: username_input.val(), 
+			pass: password_input.val(),
+			office_num: office.val()
+			};
+		console.log(data);
+		io.emit("register", data);
 	}
+	
 	jQuery("input#register_password").val("");
 }
 
@@ -158,6 +192,22 @@ function clearCanvas(emit)
 function clearTextHistory()
 {
 	jQuery("#text_history").html("");
+}
+
+function showStartPage()
+{
+	jQuery("div#register").show();
+	jQuery("div#room_list").show();
+	jQuery("div#drawing").hide();
+	jQuery("div#chatting").hide();
+}
+
+function showMainPage()
+{
+	jQuery("div#register").hide();
+	jQuery("div#room_list").hide();
+	jQuery("div#drawing").show();
+	jQuery("div#chatting").show();
 }
 
 function loadImage(file_input)
